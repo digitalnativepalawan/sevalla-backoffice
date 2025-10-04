@@ -19,7 +19,7 @@ const navItems = [
   { to: '/payroll', icon: PayrollIcon, label: 'Payroll' },
   { to: '/invoices', icon: InvoiceIcon, label: 'Invoices' },
   { to: '/employees', icon: EmployeesIcon, label: 'Employees' },
-  { to: '/tasks', icon: TasksIcon, label: 'Tasks' },
+  { to: '/tasks', icon: TasksIcon, label: 'Projects' },
   { to: '/vendors', icon: VendorsIcon, label: 'Vendors' },
   { to: '/reports', icon: ReportsIcon, label: 'Reports' },
 ];

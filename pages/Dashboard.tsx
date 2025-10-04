@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { getTransactions, getTasks } from '../services/mockApi';
@@ -107,7 +108,7 @@ const Dashboard: React.FC = () => {
         const previousMetrics = calculateMetrics(previousPeriodTransactions);
 
         const tasksDueToday = tasks.filter(task => 
-            task.dueDate && new Date(task.dueDate).toDateString() === new Date().toDateString() && task.status !== TaskStatus.DONE
+            task.dueDate && new Date(task.dueDate).toDateString() === new Date().toDateString() && task.status !== TaskStatus.COMPLETED
         ).length;
 
         const getChange = (current: number, previous: number) => {
@@ -324,6 +325,8 @@ const Dashboard: React.FC = () => {
                                 outerRadius={100} 
                                 labelLine={false} 
                                 label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+                                    // Fix: Explicitly cast recharts properties to 'number' to resolve type errors in calculations.
+                                    // The library's type inference can be unreliable for these render prop arguments.
                                     const RADIAN = Math.PI / 180;
                                     const radius = Number(innerRadius) + (Number(outerRadius) - Number(innerRadius)) * 0.5;
                                     const x = Number(cx) + radius * Math.cos(-Number(midAngle) * RADIAN);

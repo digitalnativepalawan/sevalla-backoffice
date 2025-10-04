@@ -1,4 +1,5 @@
 
+
 import React, {
     useState,
     useEffect,
@@ -172,12 +173,16 @@ const Reports: React.FC = () => {
                 return acc;
             }, {} as Record <string, number> );
 
-        const totalIncome = Object.values(incomeByCategory).reduce((sum, amount) => sum + amount, 0);
-        const totalExpenses = Object.values(expenseByCategory).reduce((sum, amount) => sum + amount, 0);
+        // Fix: Explicitly type `sum` and `amount` to ensure they are treated as numbers.
+        const totalIncome = Object.values(incomeByCategory).reduce((sum: number, amount: number) => sum + amount, 0);
+        // Fix: Explicitly type `sum` and `amount` to ensure they are treated as numbers.
+        const totalExpenses = Object.values(expenseByCategory).reduce((sum: number, amount: number) => sum + amount, 0);
 
         return {
-            incomeItems: Object.entries(incomeByCategory).sort(([, a], [, b]) => b - a),
-            expenseItems: Object.entries(expenseByCategory).sort(([, a], [, b]) => b - a),
+            // Fix: Cast sorting values to numbers to prevent arithmetic operations on 'unknown' types.
+            incomeItems: Object.entries(incomeByCategory).sort(([, a], [, b]) => Number(b) - Number(a)),
+            // Fix: Cast sorting values to numbers to prevent arithmetic operations on 'unknown' types.
+            expenseItems: Object.entries(expenseByCategory).sort(([, a], [, b]) => Number(b) - Number(a)),
             totalIncome,
             totalExpenses,
             netProfit: totalIncome - totalExpenses,

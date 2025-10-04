@@ -1,10 +1,11 @@
 
 
+
 import React, { useState, useEffect, useMemo } from 'react';
 import KpiCard from '../components/ui/KpiCard';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { getVendors, addVendor, updateVendor, deleteVendor, getTransactions, addTransactions } from '../services/mockApi';
+import { getVendorsFirestore, addVendorFirestore, updateVendorFirestore, deleteVendorFirestore, getTransactionsFirestore, addTransactionFirestore } from '../services/firebaseApi';
 import { Vendor, AnyTransaction, TransactionType, Expense } from '../types';
 import { PlusIcon, EllipsisVerticalIcon } from '../components/Icons';
 import Modal from '../components/ui/Modal';
@@ -165,7 +166,6 @@ const Vendors: React.FC = () => {
     const [transactions, setTransactions] = useState<AnyTransaction[]>([]);
     const [paymentTotals, setPaymentTotals] = useState<Record<string, number>>({});
     const [isLoading, setIsLoading] = useState(true);
-    // Fix: The modal for adding a vendor should not be open by default.
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
     const [deletingVendor, setDeletingVendor] = useState<Vendor | null>(null);
@@ -180,7 +180,7 @@ const Vendors: React.FC = () => {
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            const [vendorsData, transactionsData] = await Promise.all([getVendors(), getTransactions()]);
+            const [vendorsData, transactionsData] = await Promise.all([getVendorsFirestore(), getTransactionsFirestore()]);
             setVendors(vendorsData);
             setTransactions(transactionsData);
 
@@ -229,7 +229,7 @@ const Vendors: React.FC = () => {
     const kpiData = useMemo(() => {
         const totalVendors = vendors.length;
         const categories = new Set(vendors.map(v => v.category));
-        const totalPaid = Object.values(paymentTotals).reduce((sum, amount) => sum + amount, 0);
+        const totalPaid = Object.values(paymentTotals).reduce((sum: number, amount: number) => sum + amount, 0);
         return { totalVendors, totalCategories: categories.size, totalPaid };
     }, [vendors, paymentTotals]);
 
@@ -263,7 +263,7 @@ const Vendors: React.FC = () => {
     const confirmDelete = async () => {
         if (!deletingVendor) return;
         try {
-            await deleteVendor(deletingVendor.id);
+            await deleteVendorFirestore(deletingVendor.id);
             await fetchData(); // Refetch all data to ensure consistency
         } catch (error) {
             console.error("Failed to delete vendor:", error);
@@ -275,9 +275,9 @@ const Vendors: React.FC = () => {
     const handleFormSubmit = async (values: FormValues) => {
         try {
             if (editingVendor) {
-                await updateVendor(editingVendor.id, values);
+                await updateVendorFirestore(editingVendor.id, values);
             } else {
-                await addVendor(values);
+                await addVendorFirestore(values);
             }
             await fetchData(); // Refetch all data
         } catch (error) {
@@ -302,7 +302,7 @@ const Vendors: React.FC = () => {
         };
 
         try {
-            await addTransactions([newExpense]);
+            await addTransactionFirestore(newExpense as Omit<AnyTransaction, 'id'>);
             await fetchData(); // Refetch data to update totals
         } catch (error) {
             console.error("Failed to log payment:", error);

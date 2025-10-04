@@ -1,22 +1,21 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Button from '../components/ui/Button';
-import { getTasks, addTaskComment, addTaskAttachment, addTask } from '../services/mockApi';
+import { getTasks, addTaskComment, addTaskAttachment, addTask, updateTask, deleteTask, deleteTaskAttachment, updateTaskComment, deleteTaskComment } from '../services/mockApi';
 import { Task, TaskStatus, TaskPriority } from '../types';
-import { PlusIcon, UserCircleIcon, CalendarIcon, FlagIcon, ClipboardListIcon, CogIcon, ExclamationCircleIcon, CheckCircleIcon, ChatBubbleLeftIcon, PaperClipIcon, PhotoIcon } from '../components/Icons';
+import { PlusIcon, UserCircleIcon, CalendarIcon, FlagIcon, ClipboardListIcon, CogIcon, CheckCircleIcon, ChatBubbleLeftIcon, PaperClipIcon, PhotoIcon, PencilIcon, TrashIcon } from '../components/Icons';
 import { formatDate, formatTimeAgo } from '../utils/formatters';
 import Modal from '../components/ui/Modal';
 
 const assigneeMap: { [key: string]: string } = {
-    'staff-1': 'John Doe',
-    'manager-1': 'Jane Smith',
+    'staff-1': 'David Le',
+    'manager-1': 'Quennie O',
     'admin': 'Admin User',
 };
 
 const statusConfig = {
     [TaskStatus.TODO]: { title: 'To Do', color: 'text-gray-400', icon: ClipboardListIcon },
     [TaskStatus.IN_PROGRESS]: { title: 'In Progress', color: 'text-blue-400', icon: CogIcon },
-    [TaskStatus.BLOCKED]: { title: 'Blocked', color: 'text-red-400', icon: ExclamationCircleIcon },
-    [TaskStatus.DONE]: { title: 'Done', color: 'text-green-400', icon: CheckCircleIcon },
+    [TaskStatus.COMPLETED]: { title: 'Completed', color: 'text-green-400', icon: CheckCircleIcon },
 };
 
 const priorityConfig = {
@@ -174,7 +173,7 @@ const NewTaskForm: React.FC<{
             <div className="flex justify-end space-x-2 pt-4">
                 <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
                 <Button type="submit" variant="primary" disabled={isSubmitting || !title.trim()}>
-                    {isSubmitting ? 'Creating...' : 'Create Task'}
+                    {isSubmitting ? 'Creating...' : 'Create Project'}
                 </Button>
             </div>
         </form>
@@ -185,28 +184,43 @@ const TaskDetailModal: React.FC<{
     task: Task | null;
     onClose: () => void;
     onUpdate: (updatedTask: Task) => void;
-}> = ({ task, onClose, onUpdate }) => {
+    onDelete: (taskId: string) => void;
+}> = ({ task, onClose, onUpdate, onDelete }) => {
     const [newComment, setNewComment] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSubmittingComment, setIsSubmittingComment] = useState(false);
     const [attachmentUrl, setAttachmentUrl] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedData, setEditedData] = useState<Partial<Task>>({});
+    const [editingComment, setEditingComment] = useState<{ index: number; text: string } | null>(null);
+
+    useEffect(() => {
+        if (isEditing && task) {
+            setEditedData({
+                title: task.title,
+                description: task.description || '',
+                assignee: task.assignee,
+                priority: task.priority,
+                dueDate: task.dueDate ? task.dueDate.split('T')[0] : '',
+            });
+        }
+    }, [isEditing, task]);
 
     if (!task) return null;
     
     const handleCommentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newComment.trim() || isSubmitting) return;
-        setIsSubmitting(true);
+        if (!newComment.trim() || isSubmittingComment) return;
+        setIsSubmittingComment(true);
         try {
-            // Assume current user is 'admin' for simplicity
             const updatedTask = await addTaskComment(task.id, newComment, 'admin');
             onUpdate(updatedTask);
             setNewComment('');
         } catch (error) {
             console.error('Failed to add comment:', error);
         } finally {
-            setIsSubmitting(false);
+            setIsSubmittingComment(false);
         }
     };
     
@@ -226,8 +240,6 @@ const TaskDetailModal: React.FC<{
         const file = e.target.files?.[0];
         if (!file) return;
         try {
-            // In a real app, this would involve uploading the file to a server/storage
-            // and getting a URL back. Here we just simulate it with a placeholder.
             const fakeUrl = `local-file/${file.name}`; 
             const updatedTask = await addTaskAttachment(task.id, fakeUrl);
             onUpdate(updatedTask);
@@ -236,103 +248,236 @@ const TaskDetailModal: React.FC<{
              console.error('Failed to add file attachment:', error);
         }
     };
+
+    const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setEditedData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSave = async () => {
+        if (!editedData.title?.trim()) {
+            alert('Title cannot be empty.');
+            return;
+        }
+        try {
+            const updatedTask = await updateTask(task.id, {
+                ...editedData,
+                dueDate: editedData.dueDate ? new Date(editedData.dueDate).toISOString() : undefined,
+            });
+            onUpdate(updatedTask);
+            setIsEditing(false);
+        } catch (error) {
+            console.error('Failed to update task:', error);
+            alert('Could not save changes.');
+        }
+    };
+
+    const handleDelete = () => {
+        if (window.confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
+            onDelete(task.id);
+        }
+    };
+
+    const handleAttachmentDelete = async (url: string) => {
+        if (!task) return;
+        if (window.confirm('Are you sure you want to delete this attachment?')) {
+            try {
+                const updatedTask = await deleteTaskAttachment(task.id, url);
+                onUpdate(updatedTask);
+            } catch (error) {
+                console.error('Failed to delete attachment', error);
+                alert('Could not delete attachment.');
+            }
+        }
+    };
+
+    const handleCommentDelete = async (originalIndex: number) => {
+        if (!task) return;
+        if (window.confirm('Are you sure you want to delete this comment?')) {
+            try {
+                const updatedTask = await deleteTaskComment(task.id, originalIndex);
+                onUpdate(updatedTask);
+            } catch (error) {
+                console.error('Failed to delete comment', error);
+                alert('Could not delete comment.');
+            }
+        }
+    };
+
+    const handleCommentUpdate = async () => {
+        if (!task || !editingComment) return;
+        try {
+            const updatedTask = await updateTaskComment(task.id, editingComment.index, editingComment.text);
+            onUpdate(updatedTask);
+            setEditingComment(null);
+        } catch (error) {
+            console.error('Failed to update comment', error);
+            alert('Could not update comment.');
+        }
+    };
     
     const priority = priorityConfig[task.priority];
     const assigneeName = assigneeMap[task.assignee] || task.assignee;
+    const inputClasses = "bg-[#0D0D12] border border-[#2D2D3A] rounded-lg px-3 py-2 text-sm w-full focus:ring-1 focus:ring-[#8A5CF6] focus:border-[#8A5CF6] outline-none";
 
     return (
-        <Modal isOpen={!!task} onClose={onClose} title={task.title} size="lg">
-            <div className="space-y-6">
-                 <div className="grid grid-cols-3 gap-4 text-sm">
-                    <div className="flex items-center text-gray-300" title="Assignee">
-                        <UserCircleIcon className="h-5 w-5 mr-2 text-gray-400" />
-                        <span>{assigneeName}</span>
+        <Modal isOpen={!!task} onClose={onClose} title={isEditing ? 'Edit Project' : task.title} size="lg">
+            {isEditing ? (
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-xs text-gray-400 mb-1 block">Title</label>
+                        <input type="text" name="title" value={editedData.title} onChange={handleEditChange} className={inputClasses} required autoFocus />
                     </div>
-                    {task.dueDate && (
-                        <div className="flex items-center text-gray-300" title="Due Date">
-                            <CalendarIcon className="h-5 w-5 mr-2 text-gray-400" />
-                            <span>{formatDate(task.dueDate)}</span>
+                    <div>
+                        <label className="text-xs text-gray-400 mb-1 block">Description</label>
+                        <textarea name="description" value={editedData.description} onChange={handleEditChange} rows={3} className={inputClasses} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs text-gray-400 mb-1 block">Assignee</label>
+                            <select name="assignee" value={editedData.assignee} onChange={handleEditChange} className={inputClasses}>
+                                {Object.entries(assigneeMap).map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-xs text-gray-400 mb-1 block">Priority</label>
+                            <select name="priority" value={editedData.priority} onChange={handleEditChange} className={inputClasses}>
+                                {Object.entries(priorityConfig).map(([level, {label}]) => <option key={level} value={level}>{label}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-xs text-gray-400 mb-1 block">Due Date</label>
+                        <input type="date" name="dueDate" value={editedData.dueDate} onChange={handleEditChange} className={inputClasses} />
+                    </div>
+                    <div className="flex justify-end space-x-2 pt-4">
+                        <Button variant="secondary" onClick={() => setIsEditing(false)}>Cancel</Button>
+                        <Button variant="primary" onClick={handleSave}>Save Changes</Button>
+                    </div>
+                </div>
+            ) : (
+                <div className="space-y-6">
+                     <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div className="flex items-center text-gray-300" title="Assignee">
+                            <UserCircleIcon className="h-5 w-5 mr-2 text-gray-400" />
+                            <span>{assigneeName}</span>
+                        </div>
+                        {task.dueDate && (
+                            <div className="flex items-center text-gray-300" title="Due Date">
+                                <CalendarIcon className="h-5 w-5 mr-2 text-gray-400" />
+                                <span>{formatDate(task.dueDate)}</span>
+                            </div>
+                        )}
+                        <div className={`flex items-center font-medium ${priority.color}`} title="Priority">
+                            <FlagIcon className="h-5 w-5 mr-2" />
+                            <span>{priority.label}</span>
+                        </div>
+                    </div>
+
+                    {task.description && (
+                        <div>
+                            <h4 className="font-semibold text-white mb-2">Description</h4>
+                            <p className="text-gray-300 text-sm whitespace-pre-wrap">{task.description}</p>
                         </div>
                     )}
-                    <div className={`flex items-center font-medium ${priority.color}`} title="Priority">
-                        <FlagIcon className="h-5 w-5 mr-2" />
-                        <span>{priority.label}</span>
-                    </div>
-                </div>
-
-                {task.description && (
-                    <div>
-                        <h4 className="font-semibold text-white mb-2">Description</h4>
-                        <p className="text-gray-300 text-sm whitespace-pre-wrap">{task.description}</p>
-                    </div>
-                )}
-                 
-                 <div>
-                    <h4 className="font-semibold text-white mb-3">Attachments</h4>
-                    <div className="space-y-2">
-                        {task.attachments?.map((att, index) => (
-                             <a key={index} href={att} target="_blank" rel="noopener noreferrer" className="flex items-center bg-[#0D0D12] p-2 rounded-lg hover:bg-[#2D2D3A] transition-colors">
-                                <PaperClipIcon className="h-5 w-5 mr-3 text-gray-400 flex-shrink-0" />
-                                <span className="text-sm text-blue-400 truncate">{att.startsWith('local-file/') ? att.substring(11) : att}</span>
-                            </a>
-                        ))}
-                    </div>
-                    <form onSubmit={handleAddLink} className="mt-4 flex gap-2 items-center">
-                        <input
-                            type="url"
-                            value={attachmentUrl}
-                            onChange={(e) => setAttachmentUrl(e.target.value)}
-                            placeholder="Add a link..."
-                            className="flex-grow bg-[#0D0D12] border border-[#2D2D3A] rounded-lg px-3 py-1.5 text-sm focus:ring-1 focus:ring-[#8A5CF6] focus:border-[#8A5CF6] outline-none"
-                        />
-                        <Button type="submit" variant="secondary" disabled={!attachmentUrl.trim()}>Add Link</Button>
-                        <Button type="button" variant="secondary" onClick={() => fileInputRef.current?.click()}>Upload</Button>
-                        <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
-                    </form>
-                </div>
-
-                <div>
-                    <h4 className="font-semibold text-white mb-3 pt-4 border-t border-[#2D2D3A]">Comments</h4>
-                    <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
-                        {task.comments && task.comments.length > 0 ? (
-                            task.comments.slice().reverse().map((comment, index) => (
-                                <div key={index} className="flex items-start space-x-3">
-                                    <UserCircleIcon className="h-8 w-8 text-gray-500 flex-shrink-0 mt-1" />
-                                    <div>
-                                        <div className="flex items-baseline space-x-2">
-                                            <p className="font-semibold text-white text-sm">{assigneeMap[comment.userId] || comment.userId}</p>
-                                            <p className="text-xs text-gray-400">{formatTimeAgo(comment.createdAt)}</p>
-                                        </div>
-                                        <p className="text-sm text-gray-300 bg-[#0D0D12] p-2 rounded-lg mt-1 whitespace-pre-wrap">{comment.text}</p>
-                                    </div>
+                     
+                     <div>
+                        <h4 className="font-semibold text-white mb-3">Attachments</h4>
+                        <div className="space-y-2">
+                            {task.attachments?.map((att, index) => (
+                                <div key={index} className="flex items-center justify-between bg-[#0D0D12] p-2 rounded-lg">
+                                    <a href={att} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 truncate flex-1">
+                                        <PaperClipIcon className="h-5 w-5 mr-1 text-gray-400 flex-shrink-0" />
+                                        <span className="text-sm text-blue-400 truncate">{att.startsWith('local-file/') ? att.substring(11) : att}</span>
+                                    </a>
+                                    <button onClick={() => handleAttachmentDelete(att)} className="p-1 text-gray-500 hover:text-red-400 ml-2">
+                                        <TrashIcon className="h-4 w-4" />
+                                    </button>
                                 </div>
-                            ))
-                        ) : (
-                            <p className="text-sm text-gray-400 italic">No comments yet.</p>
-                        )}
+                            ))}
+                        </div>
+                        <form onSubmit={handleAddLink} className="mt-4 flex gap-2 items-center">
+                            <input type="url" value={attachmentUrl} onChange={(e) => setAttachmentUrl(e.target.value)} placeholder="Add a link..." className="flex-grow bg-[#0D0D12] border border-[#2D2D3A] rounded-lg px-3 py-1.5 text-sm focus:ring-1 focus:ring-[#8A5CF6] focus:border-[#8A5CF6] outline-none" />
+                            <Button type="submit" variant="secondary" disabled={!attachmentUrl.trim()}>Add Link</Button>
+                            <Button type="button" variant="secondary" onClick={() => fileInputRef.current?.click()}>Upload</Button>
+                            <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
+                        </form>
                     </div>
-                </div>
 
-                <form onSubmit={handleCommentSubmit} className="pt-4 border-t border-[#2D2D3A]">
-                    <div className="flex items-start space-x-3">
-                        <UserCircleIcon className="h-8 w-8 text-gray-500 flex-shrink-0" />
-                        <div className="flex-1">
-                            <textarea
-                                value={newComment}
-                                onChange={(e) => setNewComment(e.target.value)}
-                                placeholder="Add a comment..."
-                                rows={2}
-                                className="w-full bg-[#0D0D12] border border-[#2D2D3A] rounded-lg p-2 text-sm focus:ring-1 focus:ring-[#8A5CF6] focus:border-[#8A5CF6] outline-none transition"
-                            />
-                            <div className="mt-2 text-right">
-                                <Button type="submit" variant="primary" disabled={!newComment.trim() || isSubmitting}>
-                                    {isSubmitting ? 'Posting...' : 'Post Comment'}
-                                </Button>
-                            </div>
+                    <div>
+                        <h4 className="font-semibold text-white mb-3 pt-4 border-t border-[#2D2D3A]">Comments</h4>
+                        <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
+                            {task.comments && task.comments.length > 0 ? (
+                                task.comments.slice().reverse().map((comment, index) => {
+                                    const originalIndex = task.comments!.length - 1 - index;
+                                    const isEditingThisComment = editingComment?.index === originalIndex;
+                                    
+                                    return (
+                                        <div key={originalIndex} className="flex items-start space-x-3">
+                                            <UserCircleIcon className="h-8 w-8 text-gray-500 flex-shrink-0 mt-1" />
+                                            <div className="flex-1">
+                                                <div className="flex items-baseline justify-between">
+                                                    <div className="flex items-baseline space-x-2">
+                                                        <p className="font-semibold text-white text-sm">{assigneeMap[comment.userId] || comment.userId}</p>
+                                                        <p className="text-xs text-gray-400">{formatTimeAgo(comment.createdAt)}</p>
+                                                    </div>
+                                                    {comment.userId === 'admin' && !isEditingThisComment && (
+                                                        <div className="flex items-center space-x-2">
+                                                            <button onClick={() => setEditingComment({ index: originalIndex, text: comment.text })} className="p-1 text-gray-500 hover:text-white">
+                                                                <PencilIcon className="h-4 w-4" />
+                                                            </button>
+                                                            <button onClick={() => handleCommentDelete(originalIndex)} className="p-1 text-gray-500 hover:text-red-400">
+                                                                <TrashIcon className="h-4 w-4" />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {isEditingThisComment ? (
+                                                     <div className="mt-1">
+                                                        <textarea
+                                                            value={editingComment.text}
+                                                            onChange={(e) => setEditingComment({ ...editingComment, text: e.target.value })}
+                                                            rows={3}
+                                                            className="w-full bg-[#0D0D12] border border-[#2D2D3A] rounded-lg p-2 text-sm focus:ring-1 focus:ring-[#8A5CF6] focus:border-[#8A5CF6] outline-none transition"
+                                                            autoFocus
+                                                        />
+                                                        <div className="flex justify-end space-x-2 mt-2">
+                                                            <Button size="sm" variant="secondary" onClick={() => setEditingComment(null)}>Cancel</Button>
+                                                            <Button size="sm" variant="primary" onClick={handleCommentUpdate}>Save</Button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-sm text-gray-300 bg-[#0D0D12] p-2 rounded-lg mt-1 whitespace-pre-wrap">{comment.text}</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )
+                                })
+                            ) : (
+                                <p className="text-sm text-gray-400 italic">No comments yet.</p>
+                            )}
                         </div>
                     </div>
-                </form>
-            </div>
+
+                    <form onSubmit={handleCommentSubmit} className="pt-4 border-t border-[#2D2D3A]">
+                        <div className="flex items-start space-x-3">
+                            <UserCircleIcon className="h-8 w-8 text-gray-500 flex-shrink-0" />
+                            <div className="flex-1">
+                                <textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Add a comment..." rows={2} className="w-full bg-[#0D0D12] border border-[#2D2D3A] rounded-lg p-2 text-sm focus:ring-1 focus:ring-[#8A5CF6] focus:border-[#8A5CF6] outline-none transition" />
+                                <div className="mt-2 flex justify-between items-center">
+                                    <Button type="button" variant="subtle" className="text-red-400 hover:bg-red-500/10" onClick={handleDelete}>Delete Project</Button>
+                                    <div>
+                                        <Button variant="secondary" onClick={() => setIsEditing(true)}>Edit</Button>
+                                        <Button type="submit" variant="primary" disabled={!newComment.trim() || isSubmittingComment} className="ml-2">
+                                            {isSubmittingComment ? 'Posting...' : 'Post Comment'}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            )}
         </Modal>
     );
 };
@@ -430,7 +575,7 @@ const Tasks: React.FC = () => {
     const handleTaskUpdate = (updatedTask: Task) => {
         setTasks(prevTasks => prevTasks.map(t => t.id === updatedTask.id ? updatedTask : t));
         if (selectedTask?.id === updatedTask.id) {
-            setSelectedTask(updatedTask); // Keep modal view in sync if it's open
+            setSelectedTask(updatedTask);
         }
     };
     
@@ -438,21 +583,30 @@ const Tasks: React.FC = () => {
         setTasks(prev => [newTask, ...prev]);
     };
 
+    const handleTaskDeleted = async (taskId: string) => {
+        try {
+            await deleteTask(taskId);
+            setTasks(prev => prev.filter(t => t.id !== taskId));
+            setSelectedTask(null);
+        } catch (error) {
+            console.error("Failed to delete task:", error);
+        }
+    };
 
     return (
         <div className="space-y-6 h-[calc(100vh-6rem)] flex flex-col">
             <div className="flex justify-between items-center">
                  <div>
-                    <h1 className="text-3xl font-bold text-white">Tasks Board</h1>
-                    <p className="text-gray-400 mt-1">Organize, assign, and track your team's work.</p>
+                    <h1 className="text-3xl font-bold text-white">Projects Board</h1>
+                    <p className="text-gray-400 mt-1">Organize, assign, and track your team's projects.</p>
                 </div>
-                <Button variant="primary" leftIcon={<PlusIcon />} onClick={() => setIsNewTaskModalOpen(true)}>New Task</Button>
+                <Button variant="primary" leftIcon={<PlusIcon />} onClick={() => setIsNewTaskModalOpen(true)}>New Project</Button>
             </div>
             {isLoading ? (
-                <div className="flex-1 flex items-center justify-center text-gray-400">Loading tasks...</div>
+                <div className="flex-1 flex items-center justify-center text-gray-400">Loading projects...</div>
             ) : (
                 <div className="flex-1 flex gap-6 overflow-x-auto pb-4">
-                    {(Object.keys(statusConfig) as TaskStatus[]).map(status => (
+                    {[TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED].map(status => (
                         <KanbanColumn key={status} status={status} tasks={tasksByStatus[status] || []} onTaskClick={handleTaskClick} />
                     ))}
                 </div>
@@ -461,11 +615,12 @@ const Tasks: React.FC = () => {
                 task={selectedTask}
                 onClose={handleCloseModal}
                 onUpdate={handleTaskUpdate}
+                onDelete={handleTaskDeleted}
             />
             <Modal
                 isOpen={isNewTaskModalOpen}
                 onClose={() => setIsNewTaskModalOpen(false)}
-                title="Create New Task"
+                title="Create New Project"
                 size="lg"
             >
                 <NewTaskForm

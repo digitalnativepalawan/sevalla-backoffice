@@ -1,9 +1,46 @@
 import { AnyTransaction, FundAccount, Task, TransactionType, TaskStatus, TaskPriority, Income, Expense, Employee, PayrollEntry, PayrollStatus, Deductions, Vendor, Customer, Product, Invoice, InvoiceStatus, LineItem } from '../types';
 
+// --- LocalStorage Helpers ---
+const getFromLocalStorage = <T>(key: string, defaultValue: T): T => {
+    try {
+        const storedValue = localStorage.getItem(key);
+        if (storedValue) {
+            return JSON.parse(storedValue);
+        }
+    } catch (error) {
+        console.error(`Error reading from localStorage for key "${key}":`, error);
+    }
+    // If nothing is stored, save the default value for next time
+    saveToLocalStorage(key, defaultValue);
+    return defaultValue;
+};
+
+const saveToLocalStorage = <T>(key: string, value: T): void => {
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+        console.error(`Error writing to localStorage for key "${key}":`, error);
+    }
+};
+
+
 const today = new Date();
 const getDate = (daysAgo: number) => new Date(today.getTime() - daysAgo * 24 * 60 * 60 * 1000).toISOString();
 
-let mockFundAccounts: FundAccount[] = [
+// --- LocalStorage Keys ---
+const FUND_ACCOUNTS_KEY = 'halobloc_fund_accounts';
+const TRANSACTIONS_KEY = 'halobloc_transactions';
+const TASKS_KEY = 'halobloc_tasks';
+const EMPLOYEES_KEY = 'halobloc_employees';
+const PAYROLL_ENTRIES_KEY = 'halobloc_payroll_entries';
+const VENDORS_KEY = 'halobloc_vendors';
+const CUSTOMERS_KEY = 'halobloc_customers';
+const PRODUCTS_KEY = 'halobloc_products';
+const INVOICES_KEY = 'halobloc_invoices';
+
+// --- Initial Mock Data (used as fallback) ---
+
+const initialFundAccounts: FundAccount[] = [
   { id: '1', name: 'PayPal', type: 'digital', institution: 'PayPal', balance: 37500, lastUpdated: getDate(1), isHidden: false, notes: 'PayPal digital wallet account' },
   { id: '2', name: 'GCash', type: 'digital', institution: 'GCash', balance: 125000, lastUpdated: getDate(0), isHidden: false, notes: 'GCash mobile wallet account' },
   { id: '3', name: 'Bank Transfer (EastWest)', type: 'checking', institution: 'EastWest', balance: 1025678, lastUpdated: getDate(2), isHidden: false, notes: 'EastWest Bank account for transfers' },
@@ -11,7 +48,7 @@ let mockFundAccounts: FundAccount[] = [
   { id: '5', name: 'Cash', type: 'cash', institution: 'Cash', balance: 50000, lastUpdated: getDate(3), isHidden: false, notes: 'Physical cash on hand' },
 ];
 
-let mockTransactions: AnyTransaction[] = [
+const initialTransactions: AnyTransaction[] = [
     { id: 't1', type: TransactionType.INCOME, date: getDate(1), amount: 15200, currency: 'PHP', category: 'Accommodation', method: 'PayPal', source: 'Accommodation', createdBy: 'admin', createdAt: getDate(1), updatedAt: getDate(1) } as Income,
     { id: 't2', type: TransactionType.EXPENSE, date: getDate(2), amount: 2500, currency: 'PHP', category: 'F&B', method: 'GCash', vendor: 'Local Market', invoiceNo: 'LM-001', createdBy: 'admin', createdAt: getDate(2), updatedAt: getDate(2) } as Expense,
     { id: 't3', type: TransactionType.INCOME, date: getDate(3), amount: 38002.88, currency: 'PHP', category: 'Accommodation', method: 'EastWest', source: 'Accommodation', createdBy: 'admin', createdAt: getDate(3), updatedAt: getDate(3) } as Income,
@@ -27,7 +64,7 @@ let mockTransactions: AnyTransaction[] = [
     { id: 't13', type: TransactionType.EXPENSE, date: getDate(13), amount: 20000, currency: 'PHP', category: 'Professional Services', method: 'RCBC', vendor: 'Accounting Firm', invoiceNo: 'AF-2023-01', createdBy: 'admin', createdAt: getDate(13), updatedAt: getDate(13) } as Expense,
 ];
 
-let mockTasks: Task[] = [
+const initialTasks: Task[] = [
     { id: 'task1', title: 'Restock pantry items', status: TaskStatus.TODO, priority: TaskPriority.MEDIUM, assignee: 'staff-1', dueDate: getDate(-2), createdBy: 'admin', createdAt: getDate(5), updatedAt: getDate(5) },
     { 
       id: 'task2', 
@@ -45,7 +82,7 @@ let mockTasks: Task[] = [
         { userId: 'manager-1', text: 'Technician confirmed. All units will be checked.', createdAt: getDate(2) }
       ]
     },
-    { id: 'task3', title: 'Update website with new photos', status: TaskStatus.DONE, priority: TaskPriority.LOW, assignee: 'manager-1', createdBy: 'admin', createdAt: getDate(10), updatedAt: getDate(1) },
+    { id: 'task3', title: 'Update website with new photos', status: TaskStatus.COMPLETED, priority: TaskPriority.LOW, assignee: 'manager-1', createdBy: 'admin', createdAt: getDate(10), updatedAt: getDate(1) },
     { 
       id: 'task4', 
       title: 'Prepare monthly expense report', 
@@ -60,18 +97,18 @@ let mockTasks: Task[] = [
         { userId: 'admin', text: 'I need the final numbers from the F&B department.', createdAt: getDate(1) }
       ]
     },
-    { id: 'task5', title: 'Follow up on vendor invoice #5821', status: TaskStatus.BLOCKED, priority: TaskPriority.MEDIUM, assignee: 'admin', createdBy: 'admin', createdAt: getDate(6), updatedAt: getDate(4), description: 'Waiting for confirmation from the vendor about the price discrepancy.' },
+    { id: 'task5', title: 'Follow up on vendor invoice #5821', status: TaskStatus.TODO, priority: TaskPriority.MEDIUM, assignee: 'admin', createdBy: 'admin', createdAt: getDate(6), updatedAt: getDate(4), description: 'Waiting for confirmation from the vendor about the price discrepancy.' },
     { id: 'task6', title: 'Schedule fire safety inspection', status: TaskStatus.TODO, priority: TaskPriority.HIGH, assignee: 'manager-1', dueDate: getDate(-10), createdBy: 'admin', createdAt: getDate(15), updatedAt: getDate(15) },
 ];
 
-let mockEmployees: Employee[] = [
-  { id: 'emp1', name: 'John Doe', position: 'Resort Manager', rate: 300, deductions: { sss: 1125, philhealth: 437.5, pagibig: 100, tax: 2479.17 }, hireDate: getDate(365) },
-  { id: 'emp2', name: 'Jane Smith', position: 'Front Desk Officer', rate: 150, deductions: { sss: 562.5, philhealth: 218.75, pagibig: 100, tax: 0 }, hireDate: getDate(180) },
-  { id: 'emp3', name: 'Peter Jones', position: 'Maintenance Staff', rate: 120, deductions: { sss: 450, philhealth: 175, pagibig: 100, tax: 0 }, hireDate: getDate(90) },
-  { id: 'emp4', name: 'Mary Williams', position: 'Housekeeping Supervisor', rate: 130, deductions: { sss: 495, philhealth: 192.5, pagibig: 100, tax: 0 }, hireDate: getDate(600) },
+const initialEmployees: Employee[] = [
+  { id: 'emp1', name: 'David Le', position: 'Resort Manager', rate: 300, deductions: { sss: 1125, philhealth: 437.5, pagibig: 100, tax: 2479.17 }, hireDate: getDate(365) },
+  { id: 'emp2', name: 'Quennie O', position: 'Front Desk Officer', rate: 150, deductions: { sss: 562.5, philhealth: 218.75, pagibig: 100, tax: 0 }, hireDate: getDate(180) },
+  { id: 'emp3', name: 'Ron Ron', position: 'Maintenance Staff', rate: 120, deductions: { sss: 450, philhealth: 175, pagibig: 100, tax: 0 }, hireDate: getDate(90) },
+  { id: 'emp4', name: 'Accountan', position: 'Housekeeping Supervisor', rate: 130, deductions: { sss: 495, philhealth: 192.5, pagibig: 100, tax: 0 }, hireDate: getDate(600) },
 ];
 
-let mockPayrollEntries: PayrollEntry[] = [
+const initialPayrollEntries: PayrollEntry[] = [
     { id: 'pr1', employeeId: 'emp1', periodStart: '2023-11-01T00:00:00.000Z', periodEnd: '2023-11-15T00:00:00.000Z', grossPay: 25000, deductions: { sss: 1125, philhealth: 437.5, pagibig: 100, tax: 2479.17 }, netPay: 20858.33, status: PayrollStatus.PAID },
     { id: 'pr2', employeeId: 'emp2', periodStart: '2023-11-01T00:00:00.000Z', periodEnd: '2023-11-15T00:00:00.000Z', grossPay: 12500, deductions: { sss: 562.5, philhealth: 218.75, pagibig: 100, tax: 0 }, netPay: 11618.75, status: PayrollStatus.PAID },
     { id: 'pr3', employeeId: 'emp3', periodStart: '2023-11-01T00:00:00.000Z', periodEnd: '2023-11-15T00:00:00.000Z', grossPay: 10000, deductions: { sss: 450, philhealth: 175, pagibig: 100, tax: 0 }, netPay: 9275, status: PayrollStatus.PAID },
@@ -82,7 +119,7 @@ let mockPayrollEntries: PayrollEntry[] = [
     { id: 'pr8', employeeId: 'emp4', periodStart: '2023-11-16T00:00:00.000Z', periodEnd: '2023-11-30T00:00:00.000Z', grossPay: 11000, deductions: { sss: 495, philhealth: 192.5, pagibig: 100, tax: 0 }, netPay: 10212.5, status: PayrollStatus.DRAFT },
 ];
 
-let mockVendors: Vendor[] = [
+const initialVendors: Vendor[] = [
   { id: 'v1', name: 'Local Market', category: 'F&B', contactPerson: 'Maria Dela Cruz', email: 'maria@localmarket.com', phone: '09171234567', createdAt: getDate(30), updatedAt: getDate(5) },
   { id: 'v2', name: 'Electric Co.', category: 'Utilities', contactPerson: 'Juan Santos', email: 'billing@electricco.ph', phone: '0288887777', createdAt: getDate(90), updatedAt: getDate(10) },
   { id: 'v3', name: 'Handyman Services', category: 'Repairs', contactPerson: 'Bob Builder', email: 'bob@handyman.com', phone: '09229876543', createdAt: getDate(60), updatedAt: getDate(2) },
@@ -92,13 +129,13 @@ let mockVendors: Vendor[] = [
   { id: 'v7', name: 'Accounting Firm', category: 'Professional Services', contactPerson: 'Ms. Auditor', email: 'audit@firm.com', phone: '0281234567', createdAt: getDate(13), updatedAt: getDate(13) },
 ];
 
-let mockCustomers: Customer[] = [
+const initialCustomers: Customer[] = [
   { id: 'cust1', name: 'Resort Guest A', address: 'Villa 1, Luxury Resort, Palawan', email: 'guest.a@example.com' },
   { id: 'cust2', name: 'Modular Home Client B', address: '123 Main St, Metro Manila', email: 'client.b@example.com' },
   { id: 'cust3', name: 'Event Organizer C', address: '456 Business Park, Cebu City', email: 'events.c@example.com' },
 ];
 
-let mockProducts: Product[] = [
+const initialProducts: Product[] = [
   { id: 'prod1', name: 'Overnight Stay - Deluxe Villa', price: 15000 },
   { id: 'prod2', name: 'Island Hopping Tour (per person)', price: 2500 },
   { id: 'prod3', name: 'Restaurant - Dinner Set', price: 1800 },
@@ -107,7 +144,7 @@ let mockProducts: Product[] = [
   { id: 'prod6', name: 'Construction Materials Delivery', price: 3500 },
 ];
 
-let mockInvoices: Invoice[] = [
+const initialInvoices: Invoice[] = [
   {
     id: 'inv1',
     invoiceNumber: 'INV-2024-0001',
@@ -168,6 +205,18 @@ let mockInvoices: Invoice[] = [
   },
 ];
 
+
+let mockFundAccounts: FundAccount[] = getFromLocalStorage(FUND_ACCOUNTS_KEY, initialFundAccounts);
+let mockTransactions: AnyTransaction[] = getFromLocalStorage(TRANSACTIONS_KEY, initialTransactions);
+let mockTasks: Task[] = getFromLocalStorage(TASKS_KEY, initialTasks);
+let mockEmployees: Employee[] = getFromLocalStorage(EMPLOYEES_KEY, initialEmployees);
+let mockPayrollEntries: PayrollEntry[] = getFromLocalStorage(PAYROLL_ENTRIES_KEY, initialPayrollEntries);
+let mockVendors: Vendor[] = getFromLocalStorage(VENDORS_KEY, initialVendors);
+let mockCustomers: Customer[] = getFromLocalStorage(CUSTOMERS_KEY, initialCustomers);
+let mockProducts: Product[] = getFromLocalStorage(PRODUCTS_KEY, initialProducts);
+let mockInvoices: Invoice[] = getFromLocalStorage(INVOICES_KEY, initialInvoices);
+
+
 const apiRequest = <T,>(data: T, delay = 500): Promise<T> => 
   new Promise(resolve => setTimeout(() => resolve(data), delay));
 
@@ -189,6 +238,7 @@ export const addInvoice = (invoiceData: Omit<Invoice, 'id' | 'createdAt' | 'upda
         updatedAt: new Date().toISOString(),
     };
     mockInvoices = [newInvoice, ...mockInvoices];
+    saveToLocalStorage(INVOICES_KEY, mockInvoices);
     return apiRequest(newInvoice);
 };
 
@@ -202,6 +252,7 @@ export const addTask = (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 
         updatedAt: new Date().toISOString(),
     };
     mockTasks = [newTask, ...mockTasks];
+    saveToLocalStorage(TASKS_KEY, mockTasks);
     return apiRequest(newTask);
 };
 
@@ -219,6 +270,7 @@ export const updateTask = (taskId: string, updates: Partial<Omit<Task, 'id'>>) =
         return task;
     });
     if (!updatedTask) throw new Error("Task not found");
+    saveToLocalStorage(TASKS_KEY, mockTasks);
     return apiRequest(updatedTask);
 };
 
@@ -226,6 +278,7 @@ export const deleteTask = (taskId: string) => {
     const taskToDelete = mockTasks.find(t => t.id === taskId);
     if (!taskToDelete) throw new Error("Task not found");
     mockTasks = mockTasks.filter(t => t.id !== taskId);
+    saveToLocalStorage(TASKS_KEY, mockTasks);
     return apiRequest(taskToDelete);
 };
 
@@ -249,6 +302,7 @@ export const addTaskComment = (taskId: string, text: string, userId: string) => 
         return task;
     });
     if (!updatedTask) throw new Error("Task not found");
+    saveToLocalStorage(TASKS_KEY, mockTasks);
     return apiRequest(updatedTask);
 };
 
@@ -267,6 +321,65 @@ export const addTaskAttachment = (taskId: string, attachmentUrl: string) => {
         return task;
     });
     if (!updatedTask) throw new Error("Task not found");
+    saveToLocalStorage(TASKS_KEY, mockTasks);
+    return apiRequest(updatedTask);
+};
+
+export const deleteTaskAttachment = (taskId: string, attachmentUrl: string) => {
+    let updatedTask: Task | undefined;
+    mockTasks = mockTasks.map(task => {
+        if (task.id === taskId) {
+            updatedTask = {
+                ...task,
+                attachments: task.attachments?.filter(url => url !== attachmentUrl),
+                updatedAt: new Date().toISOString(),
+            };
+            return updatedTask;
+        }
+        return task;
+    });
+    if (!updatedTask) throw new Error("Task not found");
+    saveToLocalStorage(TASKS_KEY, mockTasks);
+    return apiRequest(updatedTask);
+};
+
+export const updateTaskComment = (taskId: string, commentIndex: number, newText: string) => {
+    let updatedTask: Task | undefined;
+    mockTasks = mockTasks.map(task => {
+        if (task.id === taskId && task.comments && task.comments[commentIndex]) {
+            const newComments = [...task.comments];
+            newComments[commentIndex] = { ...newComments[commentIndex], text: newText, createdAt: new Date().toISOString() };
+            updatedTask = {
+                ...task,
+                comments: newComments,
+                updatedAt: new Date().toISOString(),
+            };
+            return updatedTask;
+        }
+        return task;
+    });
+    if (!updatedTask) throw new Error("Task or comment not found");
+    saveToLocalStorage(TASKS_KEY, mockTasks);
+    return apiRequest(updatedTask);
+};
+
+export const deleteTaskComment = (taskId: string, commentIndex: number) => {
+    let updatedTask: Task | undefined;
+    mockTasks = mockTasks.map(task => {
+        if (task.id === taskId && task.comments) {
+            const newComments = [...task.comments];
+            newComments.splice(commentIndex, 1);
+            updatedTask = {
+                ...task,
+                comments: newComments,
+                updatedAt: new Date().toISOString(),
+            };
+            return updatedTask;
+        }
+        return task;
+    });
+    if (!updatedTask) throw new Error("Task not found");
+    saveToLocalStorage(TASKS_KEY, mockTasks);
     return apiRequest(updatedTask);
 };
 
@@ -278,6 +391,7 @@ export const addFundAccount = (accountData: Omit<FundAccount, 'id' | 'lastUpdate
         isHidden: false,
     };
     mockFundAccounts = [newAccount, ...mockFundAccounts];
+    saveToLocalStorage(FUND_ACCOUNTS_KEY, mockFundAccounts);
     return apiRequest(newAccount);
 };
 
@@ -291,6 +405,7 @@ export const updateFundAccount = (accountId: string, updates: Partial<FundAccoun
         return acc;
     });
     if (!updatedAccount) throw new Error("Account not found");
+    saveToLocalStorage(FUND_ACCOUNTS_KEY, mockFundAccounts);
     return apiRequest(updatedAccount);
 }
 
@@ -298,6 +413,7 @@ export const deleteFundAccount = (accountId: string) => {
     const accountToDelete = mockFundAccounts.find(acc => acc.id === accountId);
     if (!accountToDelete) throw new Error("Account not found");
     mockFundAccounts = mockFundAccounts.filter(acc => acc.id !== accountId);
+    saveToLocalStorage(FUND_ACCOUNTS_KEY, mockFundAccounts);
     return apiRequest(accountToDelete);
 }
 
@@ -309,6 +425,7 @@ export const addVendor = (vendorData: Omit<Vendor, 'id' | 'createdAt' | 'updated
         updatedAt: new Date().toISOString(),
     };
     mockVendors = [newVendor, ...mockVendors];
+    saveToLocalStorage(VENDORS_KEY, mockVendors);
     return apiRequest(newVendor);
 };
 
@@ -326,6 +443,7 @@ export const updateVendor = (vendorId: string, updates: Partial<Omit<Vendor, 'id
         return v;
     });
     if (!updatedVendor) throw new Error("Vendor not found");
+    saveToLocalStorage(VENDORS_KEY, mockVendors);
     return apiRequest(updatedVendor);
 };
 
@@ -333,6 +451,7 @@ export const deleteVendor = (vendorId: string) => {
     const vendorToDelete = mockVendors.find(v => v.id === vendorId);
     if (!vendorToDelete) throw new Error("Vendor not found");
     mockVendors = mockVendors.filter(v => v.id !== vendorId);
+    saveToLocalStorage(VENDORS_KEY, mockVendors);
     return apiRequest(vendorToDelete);
 };
 
@@ -343,6 +462,7 @@ export const addPayrollRun = (entries: Omit<PayrollEntry, 'id' | 'status'>[]) =>
         status: PayrollStatus.DRAFT,
     }));
     mockPayrollEntries = [...newEntries, ...mockPayrollEntries];
+    saveToLocalStorage(PAYROLL_ENTRIES_KEY, mockPayrollEntries);
     return apiRequest(newEntries);
 };
 
@@ -353,6 +473,7 @@ export const addEmployee = (employeeData: Omit<Employee, 'id'>) => {
         deductions: employeeData.deductions || { sss: 0, philhealth: 0, pagibig: 0, tax: 0 },
     };
     mockEmployees = [newEmployee, ...mockEmployees];
+    saveToLocalStorage(EMPLOYEES_KEY, mockEmployees);
     return apiRequest(newEmployee);
 };
 
@@ -370,6 +491,7 @@ export const updateEmployee = (employeeId: string, updates: Partial<Omit<Employe
         return emp;
     });
     if (!updatedEmployee) throw new Error("Employee not found");
+    saveToLocalStorage(EMPLOYEES_KEY, mockEmployees);
     return apiRequest(updatedEmployee);
 };
 
@@ -377,6 +499,7 @@ export const deleteEmployee = (employeeId: string) => {
     const employeeToDelete = mockEmployees.find(emp => emp.id === employeeId);
     if (!employeeToDelete) throw new Error("Employee not found");
     mockEmployees = mockEmployees.filter(emp => emp.id !== employeeId);
+    saveToLocalStorage(EMPLOYEES_KEY, mockEmployees);
     return apiRequest(employeeToDelete);
 };
 
@@ -390,6 +513,7 @@ export const addTransactions = (transactions: Omit<AnyTransaction, 'id'>[]) => {
         id: `csv-${new Date().getTime()}-${index}`,
     }) as AnyTransaction);
     mockTransactions = [...newTransactions, ...mockTransactions];
+    saveToLocalStorage(TRANSACTIONS_KEY, mockTransactions);
     return apiRequest(newTransactions);
 };
 
@@ -399,5 +523,6 @@ export const addCustomer = (customerData: Omit<Customer, 'id'>) => {
         id: `cust${new Date().getTime()}`,
     };
     mockCustomers = [newCustomer, ...mockCustomers];
+    saveToLocalStorage(CUSTOMERS_KEY, mockCustomers);
     return apiRequest(newCustomer);
 };

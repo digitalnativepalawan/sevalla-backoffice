@@ -1,26 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
-import { RightArrowIcon, FundsIcon, ReportsIcon, TransactionsIcon, TasksIcon, VendorsIcon, EmployeesIcon, PayrollIcon, DataIcon, FlagIcon, PlusIcon } from '../components/Icons';
+import { FundsIcon, ReportsIcon, TransactionsIcon, TasksIcon, VendorsIcon, EmployeesIcon, PayrollIcon, DataIcon, FlagIcon, PlusIcon } from '../components/Icons';
 import { getTasks, addTask, updateTask, deleteTask } from '../services/mockApi';
 import { Task, TaskPriority, TaskStatus } from '../types';
 
-const COLORS = ['#8A5CF6', '#A881FF', '#C6A9FF', '#E4D2FF', '#3D3D50', '#5A5A70'];
-const incomeData = [{ name: 'Income', value: 4000 }];
-const expenseData = [
-  { name: 'F&B', value: 400 },
-  { name: 'Materials', value: 300 },
-  { name: 'Utilities', value: 300 },
-  { name: 'Payroll', value: 200 },
-  { name: 'Repairs', value: 100 },
-  { name: 'Other', value: 50 },
-];
 const quickActions = [
     { title: 'Add Transaction', to: '/transactions', icon: TransactionsIcon, color: 'text-green-400' },
-    { title: 'Create Task', to: '/tasks', icon: TasksIcon, color: 'text-yellow-400' },
+    { title: 'Create Project', to: '/tasks', icon: TasksIcon, color: 'text-yellow-400' },
     { title: 'Manage Funds', to: '/funds', icon: FundsIcon, color: 'text-purple-400' },
     { title: 'View Reports', to: '/reports', icon: ReportsIcon, color: 'text-blue-400' },
     { title: 'Manage Employees', to: '/employees', icon: EmployeesIcon, color: 'text-pink-400' },
@@ -32,22 +21,21 @@ const quickActions = [
 const featureCards = [
     { title: 'Financial Analytics', description: 'Track revenue, expenses, and profitability with real-time insights and detailed reporting.', icon: ReportsIcon },
     { title: 'Secure Operations', description: 'Enterprise-grade security with role-based access controls and data encryption.', icon: VendorsIcon },
-    { title: 'Automated Workflows', description: 'Streamline operations with automated task management and timesheet tracking.', icon: TasksIcon }
+    { title: 'Automated Workflows', description: 'Streamline operations with automated project management and timesheet tracking.', icon: TasksIcon }
 ];
 
 const statusConfigForForm: { [key in TaskStatus]: { title: string } } = {
     [TaskStatus.TODO]: { title: 'To Do' },
     [TaskStatus.IN_PROGRESS]: { title: 'In Progress' },
-    [TaskStatus.BLOCKED]: { title: 'Blocked' },
-    [TaskStatus.DONE]: { title: 'Done' },
+    [TaskStatus.COMPLETED]: { title: 'Completed' },
 };
 
 
 // --- Calendar Sub-components ---
 
 const assigneeMap: { [key: string]: string } = {
-    'staff-1': 'John Doe',
-    'manager-1': 'Jane Smith',
+    'staff-1': 'David Le',
+    'manager-1': 'Quennie O',
     'admin': 'Admin User',
 };
 const priorityConfig: { [key in TaskPriority]: { label: string, color: string } } = {
@@ -255,49 +243,6 @@ const Home: React.FC = () => {
 
     return (
         <div className="space-y-16">
-            <section className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                <div className="space-y-6">
-                    <h1 className="text-5xl font-bold text-white tracking-tight">Welcome to HaloBloc Back Office</h1>
-                    <p className="text-lg text-gray-400">
-                        Streamline your boutique resort and modular homes operations with our comprehensive back office management system.
-                    </p>
-                    <div className="flex space-x-4 pt-4">
-                        <Button variant="primary" rightIcon={<RightArrowIcon />}>Get Started</Button>
-                        <Button variant="secondary">Learn More</Button>
-                    </div>
-                </div>
-                <Card className="p-8">
-                    <h2 className="text-xl font-semibold text-white mb-6">Financial Overview</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                        <div className="text-center">
-                            <h3 className="font-medium text-gray-300 mb-2">Income by Category</h3>
-                            <ResponsiveContainer width="100%" height={160}>
-                                <PieChart>
-                                    <Pie data={incomeData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#8A5CF6" stroke="#1A1A23" />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </div>
-                        <div className="text-center">
-                            <h3 className="font-medium text-gray-300 mb-2">Expenses by Category</h3>
-                             <ResponsiveContainer width="100%" height={160}>
-                                <PieChart>
-                                    <Pie data={expenseData} cx="50%" cy="50%" outerRadius={80} dataKey="value" stroke="#1A1A23">
-                                        {expenseData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                        ))}
-                                    </Pie>
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-                    <div className="text-center mt-6">
-                         <a href="#/dashboard" className="text-sm font-medium text-[#A881FF] hover:text-white transition-colors duration-200 inline-flex items-center">
-                            View Detailed Reports <RightArrowIcon className="ml-1 w-4 h-4" />
-                        </a>
-                    </div>
-                </Card>
-            </section>
-            
             <section className="text-center">
                 <h2 className="text-3xl font-bold text-white mb-4">Quick Actions</h2>
                 <p className="text-gray-400 max-w-xl mx-auto mb-8">Access key features with a single click</p>

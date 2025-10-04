@@ -36,8 +36,7 @@ export type AnyTransaction = Income | Expense;
 export enum TaskStatus {
   TODO = 'todo',
   IN_PROGRESS = 'in-progress',
-  BLOCKED = 'blocked',
-  DONE = 'done',
+  COMPLETED = 'completed',
 }
 
 export enum TaskPriority {

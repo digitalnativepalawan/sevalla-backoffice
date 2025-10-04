@@ -3,6 +3,7 @@ import React from 'react';
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
   variant?: 'primary' | 'secondary' | 'subtle';
+  size?: 'sm' | 'md';
   className?: string;
   leftIcon?: React.ReactElement;
   rightIcon?: React.ReactElement;
@@ -11,12 +12,18 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 const Button: React.FC<ButtonProps> = ({ 
   children, 
   variant = 'primary', 
+  size = 'md',
   className = '', 
   leftIcon, 
   rightIcon, 
   ...props 
 }) => {
-  const baseClasses = "inline-flex items-center justify-center px-4 py-2 text-sm font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0D0D12] transition-all duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed";
+  const baseClasses = "inline-flex items-center justify-center font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0D0D12] transition-all duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed";
+
+  const sizeClasses = {
+      sm: 'px-2.5 py-1.5 text-xs',
+      md: 'px-4 py-2 text-sm',
+  };
 
   const variantClasses = {
     primary: 'bg-[#8A5CF6] text-white hover:bg-[#7C4EE3] focus:ring-[#8A5CF6]',
@@ -25,7 +32,7 @@ const Button: React.FC<ButtonProps> = ({
   };
 
   return (
-    <button className={`${baseClasses} ${variantClasses[variant]} ${className}`} {...props}>
+    <button className={`${baseClasses} ${sizeClasses[size]} ${variantClasses[variant]} ${className}`} {...props}>
       {/* Fix: Cast icon to React.ReactElement<any> to resolve issue with cloning element and adding className prop. */}
       {leftIcon && React.cloneElement(leftIcon as React.ReactElement<any>, { className: 'mr-2 h-4 w-4' })}
       {children}
