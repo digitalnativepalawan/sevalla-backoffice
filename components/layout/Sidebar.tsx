@@ -11,6 +11,7 @@ interface SidebarProps {
 }
 
 const navItems = [
+  { to: '/tasks', icon: TasksIcon, label: 'Projects' },
   { to: '/home', icon: HomeIcon, label: 'Home' },
   { to: '/dashboard', icon: DashboardIcon, label: 'Dashboard' },
   { to: '/data', icon: DataIcon, label: 'Data Management' },
@@ -20,7 +21,6 @@ const navItems = [
   { to: '/payroll', icon: PayrollIcon, label: 'Payroll' },
   { to: '/invoices', icon: InvoiceIcon, label: 'Invoices' },
   { to: '/employees', icon: EmployeesIcon, label: 'Employees' },
-  { to: '/tasks', icon: TasksIcon, label: 'Projects' },
   { to: '/vendors', icon: VendorsIcon, label: 'Vendors' },
   { to: '/reports', icon: ReportsIcon, label: 'Reports' },
 ];

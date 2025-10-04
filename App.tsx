@@ -21,7 +21,8 @@ function App() {
     <HashRouter>
       <Routes>
         <Route element={<MainLayout />}>
-          <Route path="/" element={<Navigate to="/home" replace />} />
+          <Route path="/" element={<Navigate to="/tasks" replace />} />
+          <Route path="/tasks" element={<Tasks />} />
           <Route path="/home" element={<Home />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/data" element={<DataManagement />} />
@@ -31,7 +32,6 @@ function App() {
           <Route path="/payroll" element={<Payroll />} />
           <Route path="/invoices" element={<Invoices />} />
           <Route path="/employees" element={<Employees />} />
-          <Route path="/tasks" element={<Tasks />} />
           <Route path="/vendors" element={<Vendors />} />
           <Route path="/reports" element={<Reports />} />
         </Route>
