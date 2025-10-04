@@ -523,7 +523,7 @@ const KanbanColumn: React.FC<{ status: TaskStatus; tasks: Task[]; onTaskClick: (
     const StatusIcon = config.icon;
 
     return (
-        <div className="bg-[#14141B] rounded-lg p-3 w-80 flex-shrink-0 flex flex-col">
+        <div className="bg-[#14141B] rounded-lg p-3 w-full md:w-80 flex-shrink-0 flex flex-col">
             <div className="flex justify-between items-center mb-4 px-1">
                 <div className={`flex items-center font-semibold ${config.color}`}>
                     <StatusIcon className="h-5 w-5 mr-2" />
@@ -605,7 +605,7 @@ const Tasks: React.FC = () => {
             {isLoading ? (
                 <div className="flex-1 flex items-center justify-center text-gray-400">Loading projects...</div>
             ) : (
-                <div className="flex-1 flex gap-6 overflow-x-auto pb-4">
+                <div className="flex-1 flex flex-col md:flex-row gap-6 md:overflow-x-auto pb-4">
                     {[TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED].map(status => (
                         <KanbanColumn key={status} status={status} tasks={tasksByStatus[status] || []} onTaskClick={handleTaskClick} />
                     ))}

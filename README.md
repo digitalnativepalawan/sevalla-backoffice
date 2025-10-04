@@ -1,20 +1,22 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# HaloBloc Back Office — Hostinger Deploy Notes
 
-# Run and deploy your AI Studio app
+**Stack:** React + Vite + TypeScript (HashRouter)  
+**Persistence:** LocalStorage (no backend)  
+**Hosting target:** Hostinger (static site)
 
-This contains everything you need to run your app locally.
+## Hostinger Git Settings
+- **Build command:** `npm ci && npm run build`
+- **Publish directory:** `dist`
+- **Deployment path:** `public_html`
+- **Node version:** `>=20` (use `.nvmrc` or `"engines"` in `package.json`)
+- **Routing:** HashRouter (no `.htaccess` SPA rewrite required)
+- **Vite base:** `/` (use `/<subfolder>/` only if deploying under a subdirectory)
+- **Do not commit:** `dist/` when using server builds
 
-View your app in AI Studio: https://ai.studio/apps/drive/1bxsXe46fDnylpb91NDI8hgqiCkvpKmUj
+## Deploy (Git on Hostinger)
+1. hPanel → **Advanced → Git → Connect repository** (use SSH URL; add Deploy Key as read-only).
+2. Set the values above and **Deploy**. (Optional: enable Auto deployment on push.)
 
-## Run Locally
+## Manual Upload (optional)
+Build locally (`npm ci && npm run build`) and upload the **contents** of `dist/` to `public_html/`.
 
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`

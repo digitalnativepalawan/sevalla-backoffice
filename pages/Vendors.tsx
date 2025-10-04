@@ -1,17 +1,15 @@
 
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import KpiCard from '../components/ui/KpiCard';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { getVendorsFirestore, addVendorFirestore, updateVendorFirestore, deleteVendorFirestore, getTransactionsFirestore, addTransactionFirestore } from '../services/firebaseApi';
-import { Vendor, AnyTransaction, TransactionType, Expense } from '../types';
+import { vendorsData } from '../services/vendorsData';
+import { Vendor, Transaction } from '../services/vendorsData/IData';
 import { PlusIcon, EllipsisVerticalIcon } from '../components/Icons';
 import Modal from '../components/ui/Modal';
 import { formatCurrencyPHP } from '../utils/formatters';
 
-type FormValues = Omit<Vendor, 'id' | 'createdAt' | 'updatedAt'>;
+type FormValues = Omit<Vendor, 'id' | 'createdAt' | 'updatedAt' | 'balance'>;
 
 // Vendor Form Component
 const VendorForm: React.FC<{
@@ -21,11 +19,9 @@ const VendorForm: React.FC<{
 }> = ({ onSubmit, onCancel, initialData }) => {
     const [formData, setFormData] = useState<FormValues>({
         name: initialData?.name || '',
-        category: initialData?.category || '',
-        contactPerson: initialData?.contactPerson || '',
+        contact: initialData?.contact || '',
         email: initialData?.email || '',
         phone: initialData?.phone || '',
-        address: initialData?.address || '',
         notes: initialData?.notes || '',
     });
 
@@ -49,27 +45,19 @@ const VendorForm: React.FC<{
                     <input type="text" name="name" value={formData.name} onChange={handleChange} className={inputClasses} required />
                 </div>
                  <div>
-                    <label className="text-xs text-gray-400 mb-1 block">Category</label>
-                    <input type="text" name="category" value={formData.category} onChange={handleChange} className={inputClasses} required />
+                    <label className="text-xs text-gray-400 mb-1 block">Contact Person</label>
+                    <input type="text" name="contact" value={formData.contact} onChange={handleChange} className={inputClasses} />
                 </div>
             </div>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label className="text-xs text-gray-400 mb-1 block">Contact Person</label>
-                    <input type="text" name="contactPerson" value={formData.contactPerson} onChange={handleChange} className={inputClasses} />
-                </div>
                  <div>
                     <label className="text-xs text-gray-400 mb-1 block">Phone</label>
                     <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className={inputClasses} />
                 </div>
-            </div>
-            <div>
-                <label className="text-xs text-gray-400 mb-1 block">Email</label>
-                <input type="email" name="email" value={formData.email} onChange={handleChange} className={inputClasses} />
-            </div>
-            <div>
-                <label className="text-xs text-gray-400 mb-1 block">Address</label>
-                <input type="text" name="address" value={formData.address} onChange={handleChange} className={inputClasses} />
+                <div>
+                    <label className="text-xs text-gray-400 mb-1 block">Email</label>
+                    <input type="email" name="email" value={formData.email} onChange={handleChange} className={inputClasses} />
+                </div>
             </div>
             <div>
                 <label className="text-xs text-gray-400 mb-1 block">Notes</label>
@@ -86,15 +74,14 @@ const VendorForm: React.FC<{
 
 // Log Payment Form Component
 const LogPaymentForm: React.FC<{
-    onSubmit: (values: Omit<Expense, 'id'|'vendor'|'type'|'currency'|'createdBy'|'createdAt'|'updatedAt'|'receiptImageUrl'>) => void;
+    onSubmit: (values: { amount: number; date: string; note: string; type: 'payment' | 'charge' }) => void;
     onCancel: () => void;
 }> = ({ onSubmit, onCancel }) => {
     const [amount, setAmount] = useState('');
-    const [category, setCategory] = useState('F&B');
-    const [method, setMethod] = useState<'GCash' | 'RCBC' | 'EastWest' | 'PayPal' | 'Cash' | 'Direct'>('Cash');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-    const [notes, setNotes] = useState('');
-    const [invoiceNo, setInvoiceNo] = useState('');
+    const [note, setNote] = useState('');
+    const [type, setType] = useState<'payment' | 'charge'>('payment');
+
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -104,12 +91,10 @@ const LogPaymentForm: React.FC<{
             return;
         }
         onSubmit({
-            date: new Date(date).toISOString(),
             amount: parsedAmount,
-            category,
-            method,
-            notes,
-            invoiceNo,
+            date: new Date(date).toISOString().split('T')[0],
+            note,
+            type,
         });
     };
 
@@ -123,38 +108,24 @@ const LogPaymentForm: React.FC<{
                     <input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputClasses} required />
                 </div>
                 <div>
-                    <label className="text-xs text-gray-400 mb-1 block">Payment Date</label>
+                    <label className="text-xs text-gray-400 mb-1 block">Transaction Date</label>
                     <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClasses} required />
                 </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label className="text-xs text-gray-400 mb-1 block">Category</label>
-                    <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} className={inputClasses} required placeholder="e.g., F&B, Materials, Utilities" />
-                </div>
-                <div>
-                    <label className="text-xs text-gray-400 mb-1 block">Payment Method</label>
-                    <select value={method} onChange={(e) => setMethod(e.target.value as any)} className={inputClasses}>
-                        <option value="Cash">Cash</option>
-                        <option value="GCash">GCash</option>
-                        <option value="RCBC">RCBC</option>
-                        <option value="EastWest">EastWest</option>
-                        <option value="PayPal">PayPal</option>
-                        <option value="Direct">Direct</option>
-                    </select>
-                </div>
-            </div>
             <div>
-                <label className="text-xs text-gray-400 mb-1 block">Invoice No. (Optional)</label>
-                <input type="text" value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} className={inputClasses} />
+                <label className="text-xs text-gray-400 mb-1 block">Transaction Type</label>
+                <select value={type} onChange={(e) => setType(e.target.value as any)} className={inputClasses}>
+                    <option value="payment">Payment to Vendor</option>
+                    <option value="charge">Charge from Vendor</option>
+                </select>
             </div>
             <div>
                 <label className="text-xs text-gray-400 mb-1 block">Notes (Optional)</label>
-                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={inputClasses} rows={3}></textarea>
+                <textarea value={note} onChange={(e) => setNote(e.target.value)} className={inputClasses} rows={3}></textarea>
             </div>
             <div className="flex justify-end space-x-2 pt-4">
                 <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
-                <Button type="submit" variant="primary">Log Payment</Button>
+                <Button type="submit" variant="primary">Log Transaction</Button>
             </div>
         </form>
     );
@@ -163,7 +134,7 @@ const LogPaymentForm: React.FC<{
 
 const Vendors: React.FC = () => {
     const [vendors, setVendors] = useState<Vendor[]>([]);
-    const [transactions, setTransactions] = useState<AnyTransaction[]>([]);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [paymentTotals, setPaymentTotals] = useState<Record<string, number>>({});
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -174,22 +145,23 @@ const Vendors: React.FC = () => {
     
     // Filter state
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState('all');
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
 
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            const [vendorsData, transactionsData] = await Promise.all([getVendorsFirestore(), getTransactionsFirestore()]);
-            setVendors(vendorsData);
+            const [vendorsFromDb, transactionsData] = await Promise.all([vendorsData.listVendors(), vendorsData.listTransactions()]);
+            setVendors(vendorsFromDb);
             setTransactions(transactionsData);
 
             const totals: Record<string, number> = {};
+            const vendorMap = new Map(vendorsFromDb.map(v => [v.id, v.name]));
             transactionsData
-                .filter((t): t is Expense => t.type === TransactionType.EXPENSE)
-                .forEach(expense => {
-                    if (expense.vendor) {
-                        totals[expense.vendor] = (totals[expense.vendor] || 0) + expense.amount;
+                .filter((t) => t.type === 'payment')
+                .forEach(payment => {
+                    const vendorName = vendorMap.get(payment.vendorId);
+                    if (vendorName) {
+                        totals[vendorName] = (totals[vendorName] || 0) + payment.amount;
                     }
                 });
             setPaymentTotals(totals);
@@ -205,37 +177,32 @@ const Vendors: React.FC = () => {
         fetchData();
     }, []);
 
-    const categories = useMemo(() => ['all', ...new Set(vendors.map(v => v.category).sort())], [vendors]);
-
     const filteredVendors = useMemo(() => {
         return vendors
             .filter(v => {
-                if (dateRange.start && new Date(v.createdAt) < new Date(dateRange.start)) return false;
+                if (dateRange.start && v.createdAt && new Date(v.createdAt) < new Date(dateRange.start)) return false;
                 if (dateRange.end) {
                     const endDate = new Date(dateRange.end);
                     endDate.setHours(23, 59, 59, 999);
-                    if (new Date(v.createdAt) > endDate) return false;
+                    if (v.createdAt && new Date(v.createdAt) > endDate) return false;
                 }
                 return true;
             })
-            .filter(v => selectedCategory === 'all' || v.category === selectedCategory)
             .filter(v =>
                 Object.values(v).some(val =>
                     String(val).toLowerCase().includes(searchTerm.toLowerCase())
                 )
             );
-    }, [vendors, searchTerm, selectedCategory, dateRange]);
+    }, [vendors, searchTerm, dateRange]);
 
     const kpiData = useMemo(() => {
         const totalVendors = vendors.length;
-        const categories = new Set(vendors.map(v => v.category));
         const totalPaid = Object.values(paymentTotals).reduce((sum: number, amount: number) => sum + amount, 0);
-        return { totalVendors, totalCategories: categories.size, totalPaid };
+        return { totalVendors, totalPaid };
     }, [vendors, paymentTotals]);
 
     const resetFilters = () => {
         setSearchTerm('');
-        setSelectedCategory('all');
         setDateRange({ start: '', end: '' });
     };
     
@@ -263,8 +230,8 @@ const Vendors: React.FC = () => {
     const confirmDelete = async () => {
         if (!deletingVendor) return;
         try {
-            await deleteVendorFirestore(deletingVendor.id);
-            await fetchData(); // Refetch all data to ensure consistency
+            await vendorsData.deleteVendor(deletingVendor.id);
+            await fetchData();
         } catch (error) {
             console.error("Failed to delete vendor:", error);
         } finally {
@@ -275,11 +242,11 @@ const Vendors: React.FC = () => {
     const handleFormSubmit = async (values: FormValues) => {
         try {
             if (editingVendor) {
-                await updateVendorFirestore(editingVendor.id, values);
+                await vendorsData.updateVendor(editingVendor.id, values);
             } else {
-                await addVendorFirestore(values);
+                await vendorsData.createVendor(values);
             }
-            await fetchData(); // Refetch all data
+            await fetchData();
         } catch (error) {
             console.error("Failed to save vendor:", error);
         } finally {
@@ -288,24 +255,17 @@ const Vendors: React.FC = () => {
         }
     };
 
-    const handleLogPaymentSubmit = async (paymentData: Omit<Expense, 'id'|'vendor'|'type'|'currency'|'createdBy'|'createdAt'|'updatedAt'|'receiptImageUrl'>) => {
+    const handleLogPaymentSubmit = async (paymentData: { amount: number; date: string; note: string; type: 'payment' | 'charge' }) => {
         if (!loggingPaymentFor) return;
 
-        const newExpense: Omit<Expense, 'id'> = {
-            ...paymentData,
-            type: TransactionType.EXPENSE,
-            vendor: loggingPaymentFor.name,
-            currency: 'PHP',
-            createdBy: 'admin',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-        };
-
         try {
-            await addTransactionFirestore(newExpense as Omit<AnyTransaction, 'id'>);
-            await fetchData(); // Refetch data to update totals
+            await vendorsData.addTransaction({
+                ...paymentData,
+                vendorId: loggingPaymentFor.id,
+            });
+            await fetchData();
         } catch (error) {
-            console.error("Failed to log payment:", error);
+            console.error("Failed to log transaction:", error);
         } finally {
             setLoggingPaymentFor(null);
         }
@@ -324,28 +284,21 @@ const Vendors: React.FC = () => {
                 <Button variant="primary" leftIcon={<PlusIcon/>} onClick={handleAddVendor}>Add Vendor</Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <KpiCard title="Total Vendors" value={kpiData.totalVendors} isLoading={isLoading} isCurrency={false} />
-                <KpiCard title="Vendor Categories" value={kpiData.totalCategories} isLoading={isLoading} isCurrency={false}/>
                 <KpiCard title="Total Paid to Vendors" value={kpiData.totalPaid} isLoading={isLoading} />
             </div>
 
             <Card>
                  <div className="mb-6">
                     <h2 className="text-lg font-semibold text-white mb-4">Filter Vendors</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                         <div>
                             <label className="text-xs text-gray-400 mb-1 block">Created Date Range</label>
                             <div className="flex gap-2">
                                 <input type="date" value={dateRange.start} onChange={e => setDateRange(p => ({ ...p, start: e.target.value }))} className={filterInputClasses} />
                                 <input type="date" value={dateRange.end} onChange={e => setDateRange(p => ({ ...p, end: e.target.value }))} className={filterInputClasses} />
                             </div>
-                        </div>
-                        <div>
-                            <label className="text-xs text-gray-400 mb-1 block">Category</label>
-                            <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className={filterInputClasses}>
-                                {categories.map(c => <option key={c} value={c}>{c === 'all' ? 'All Categories' : c}</option>)}
-                            </select>
                         </div>
                         <div className="md:col-span-2">
                              <label className="text-xs text-gray-400 mb-1 block">Search</label>
@@ -367,10 +320,10 @@ const Vendors: React.FC = () => {
                         <thead className="text-xs text-gray-300 uppercase bg-[#0D0D12]">
                             <tr>
                                 <th scope="col" className="px-6 py-3">Vendor Name</th>
-                                <th scope="col" className="px-6 py-3">Category</th>
                                 <th scope="col" className="px-6 py-3">Contact Person</th>
                                 <th scope="col" className="px-6 py-3">Contact Info</th>
                                 <th scope="col" className="px-6 py-3 text-right">Total Paid</th>
+                                <th scope="col" className="px-6 py-3 text-right">Balance</th>
                                 <th scope="col" className="px-6 py-3 text-center">Actions</th>
                             </tr>
                         </thead>
@@ -386,21 +339,21 @@ const Vendors: React.FC = () => {
                                 return (
                                 <tr key={vendor.id} className="border-b border-[#2D2D3A] hover:bg-[#0D0D12]">
                                     <td className="px-6 py-4 font-medium text-white">{vendor.name}</td>
-                                    <td className="px-6 py-4">{vendor.category}</td>
-                                    <td className="px-6 py-4">{vendor.contactPerson || '—'}</td>
+                                    <td className="px-6 py-4">{vendor.contact || '—'}</td>
                                     <td className="px-6 py-4">
                                         {vendor.email && <div>{vendor.email}</div>}
                                         {vendor.phone && <div className="text-xs">{vendor.phone}</div>}
                                     </td>
-                                    <td className="px-6 py-4 text-right font-medium text-white">{formatCurrencyPHP(totalPaidToVendor)}</td>
+                                    <td className="px-6 py-4 text-right font-medium text-gray-300">{formatCurrencyPHP(totalPaidToVendor)}</td>
+                                    <td className={`px-6 py-4 text-right font-semibold ${vendor.balance && vendor.balance > 0 ? 'text-red-400' : 'text-green-400'}`}>{formatCurrencyPHP(vendor.balance || 0)}</td>
                                     <td className="px-6 py-4 text-center">
                                          <div className="relative inline-block">
                                             <button onClick={() => setActiveMenu(activeMenu === vendor.id ? null : vendor.id)} className="text-gray-400 hover:text-white">
                                                 <EllipsisVerticalIcon className="h-5 w-5" />
                                             </button>
                                             {activeMenu === vendor.id && (
-                                                <div className="absolute right-0 mt-2 w-32 bg-[#2D2D3A] border border-[#4a4a5a] rounded-md shadow-lg z-10 text-left">
-                                                    <a href="#" onClick={(e) => { e.preventDefault(); handleLogPayment(vendor); }} className="block px-4 py-2 text-sm text-gray-300 hover:bg-[#3c3c4a]">Log Payment</a>
+                                                <div className="absolute right-0 mt-2 w-40 bg-[#2D2D3A] border border-[#4a4a5a] rounded-md shadow-lg z-10 text-left">
+                                                    <a href="#" onClick={(e) => { e.preventDefault(); handleLogPayment(vendor); }} className="block px-4 py-2 text-sm text-gray-300 hover:bg-[#3c3c4a]">Log Transaction</a>
                                                     <a href="#" onClick={(e) => { e.preventDefault(); handleEditVendor(vendor); }} className="block px-4 py-2 text-sm text-gray-300 hover:bg-[#3c3c4a]">Edit</a>
                                                     <a href="#" onClick={(e) => { e.preventDefault(); handleDeleteVendor(vendor); }} className="block px-4 py-2 text-sm text-red-400 hover:bg-[#3c3c4a]">Delete</a>
                                                 </div>
@@ -435,7 +388,7 @@ const Vendors: React.FC = () => {
                 )}
             </Modal>
             
-            <Modal isOpen={!!loggingPaymentFor} onClose={() => setLoggingPaymentFor(null)} title={`Log Payment for ${loggingPaymentFor?.name}`} size="lg">
+            <Modal isOpen={!!loggingPaymentFor} onClose={() => setLoggingPaymentFor(null)} title={`Log Transaction for ${loggingPaymentFor?.name}`} size="lg">
                 <LogPaymentForm
                     onSubmit={handleLogPaymentSubmit}
                     onCancel={() => setLoggingPaymentFor(null)}

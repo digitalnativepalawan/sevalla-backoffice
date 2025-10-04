@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 
@@ -19,8 +20,6 @@ const navItems = [
     { to: '/tasks', label: 'Tasks' },
     { to: '/vendors', label: 'Vendors' },
     { to: '/reports', label: 'Reports' },
-    { to: '/settings', label: 'Settings' },
-    { to: '/help', label: 'Help' },
 ];
 
 const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen }) => {

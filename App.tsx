@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from './components/layout/MainLayout';
@@ -33,8 +34,6 @@ function App() {
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/vendors" element={<Vendors />} />
           <Route path="/reports" element={<Reports />} />
-          <Route path="/settings" element={<Placeholder title="Settings" />} />
-          <Route path="/help" element={<Placeholder title="Help" />} />
         </Route>
       </Routes>
     </HashRouter>

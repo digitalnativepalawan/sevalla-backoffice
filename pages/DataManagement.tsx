@@ -315,38 +315,72 @@ const DataManagement: React.FC = () => {
                          <Button variant="subtle" onClick={resetFilters}>Reset</Button>
                     </div>
                  </div>
-                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-gray-400">
-                        <thead className="text-xs text-gray-300 uppercase bg-[#0D0D12]">
-                            <tr>
-                                <th scope="col" className="px-6 py-3">Date</th>
-                                <th scope="col" className="px-6 py-3">Type</th>
-                                <th scope="col" className="px-6 py-3">Category</th>
-                                <th scope="col" className="px-6 py-3">Account</th>
-                                <th scope="col" className="px-6 py-3 text-right">Amount</th>
-                                <th scope="col" className="px-6 py-3">Notes</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+
+                 {isLoading ? (
+                     <div className="text-center p-4">Loading...</div>
+                 ) : filteredTransactions.length === 0 ? (
+                     <div className="text-center p-4">No transactions found.</div>
+                 ) : (
+                    <>
+                        {/* Desktop Table View */}
+                        <div className="overflow-x-auto hidden md:block">
+                            <table className="w-full text-sm text-left text-gray-400">
+                                <thead className="text-xs text-gray-300 uppercase bg-[#0D0D12]">
+                                    <tr>
+                                        <th scope="col" className="px-6 py-3">Date</th>
+                                        <th scope="col" className="px-6 py-3">Type</th>
+                                        <th scope="col" className="px-6 py-3">Category</th>
+                                        <th scope="col" className="px-6 py-3">Account</th>
+                                        <th scope="col" className="px-6 py-3 text-right">Amount</th>
+                                        <th scope="col" className="px-6 py-3">Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredTransactions.map(t => (
+                                        <tr key={t.id} className="border-b border-[#2D2D3A] hover:bg-[#0D0D12]">
+                                            <td className="px-6 py-4 whitespace-nowrap">{formatDate(t.date)}</td>
+                                            <td className="px-6 py-4">
+                                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${t.type === TransactionType.INCOME ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                                                    {t.type}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4">{t.category}</td>
+                                            <td className="px-6 py-4">{t.method}</td>
+                                            <td className="px-6 py-4 text-right font-medium text-white">{formatCurrencyPHP(t.amount)}</td>
+                                            <td className="px-6 py-4">{t.notes || '—'}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        {/* Mobile Card View */}
+                        <div className="space-y-4 md:hidden">
                             {filteredTransactions.map(t => (
-                                <tr key={t.id} className="border-b border-[#2D2D3A] hover:bg-[#0D0D12]">
-                                    <td className="px-6 py-4 whitespace-nowrap">{formatDate(t.date)}</td>
-                                    <td className="px-6 py-4">
-                                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${t.type === TransactionType.INCOME ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                                <Card key={t.id} className="p-4">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="font-semibold text-white">{t.category}</p>
+                                            <p className="text-sm text-gray-400">{t.method}</p>
+                                        </div>
+                                        <span className={`px-2 py-1 text-xs font-medium rounded-full capitalize ${t.type === TransactionType.INCOME ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
                                             {t.type}
                                         </span>
-                                    </td>
-                                    <td className="px-6 py-4">{t.category}</td>
-                                    <td className="px-6 py-4">{t.method}</td>
-                                    <td className="px-6 py-4 text-right font-medium text-white">{formatCurrencyPHP(t.amount)}</td>
-                                    <td className="px-6 py-4">{t.notes || '—'}</td>
-                                </tr>
+                                    </div>
+                                    <div className="mt-4 flex justify-between items-end">
+                                        <div>
+                                            <p className="text-xs text-gray-500">{formatDate(t.date)}</p>
+                                            {t.notes && t.notes !== '—' && <p className="text-sm text-gray-300 mt-1 max-w-[150px] truncate">{t.notes}</p>}
+                                        </div>
+                                        <p className={`font-semibold text-lg ${t.type === TransactionType.INCOME ? 'text-green-400' : 'text-red-400'}`}>
+                                            {formatCurrencyPHP(t.amount)}
+                                        </p>
+                                    </div>
+                                </Card>
                             ))}
-                        </tbody>
-                    </table>
-                 </div>
-                 {isLoading && <div className="text-center p-4">Loading...</div>}
-                 {!isLoading && filteredTransactions.length === 0 && <div className="text-center p-4">No transactions found.</div>}
+                        </div>
+                    </>
+                 )}
             </Card>
 
         </div>

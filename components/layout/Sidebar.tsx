@@ -1,8 +1,9 @@
 
 
+
 import React, { useRef, useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { HomeIcon, DashboardIcon, DataIcon, TransactionsIcon, FundsIcon, TimesheetsIcon, TasksIcon, VendorsIcon, ReportsIcon, SettingsIcon, HelpIcon, LogoutIcon, PayrollIcon, EmployeesIcon, InvoiceIcon } from '../Icons';
+import { HomeIcon, DashboardIcon, DataIcon, TransactionsIcon, FundsIcon, TimesheetsIcon, TasksIcon, VendorsIcon, ReportsIcon, LogoutIcon, PayrollIcon, EmployeesIcon, InvoiceIcon } from '../Icons';
 
 interface SidebarProps {
   sidebarOpen: boolean;
@@ -23,11 +24,6 @@ const navItems = [
   { to: '/vendors', icon: VendorsIcon, label: 'Vendors' },
   { to: '/reports', icon: ReportsIcon, label: 'Reports' },
 ];
-
-const bottomNavItems = [
-    { to: '/settings', icon: SettingsIcon, label: 'Settings' },
-    { to: '/help', icon: HelpIcon, label: 'Help' },
-]
 
 const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
   const sidebar = useRef<HTMLElement>(null);
@@ -118,12 +114,6 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
           </nav>
         </div>
         <div className="p-4 border-t border-[#1A1A23] space-y-2">
-          {bottomNavItems.map(item => (
-              <NavLink key={item.to} to={item.to} className={getNavLinkClass} onClick={() => setSidebarOpen(false)}>
-                  <item.icon className="h-5 w-5 mr-3" />
-                  {item.label}
-              </NavLink>
-          ))}
           <a href="#" className={`${linkClasses} ${inactiveClasses} text-red-400 hover:bg-red-500/10`}>
             <LogoutIcon className="h-5 w-5 mr-3" />
             Logout
